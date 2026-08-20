@@ -6,7 +6,10 @@
   git,
   openssl,
   pkg-config,
+  postgresql,
+  postgresqlTestHook,
   src,
+  stdenv,
 }:
 rustPlatform.buildRustPackage {
   pname = "buzz-relay-runtime";
@@ -38,25 +41,6 @@ rustPlatform.buildRustPackage {
     "buzz-pair-relay"
   ];
   checkFlags = [
-    # These eight tests require a migrated live PostgreSQL database. They are
-    # covered by the later service-integration VM, not this package build.
-    "--skip"
-    "api::admin::tests::feedback_attachment_rejects_unknown_feedback"
-    "--skip"
-    "api::admin::tests::report_detail_rejects_unknown_report"
-    "--skip"
-    "api::media::tests::media_read_accepts_range_header_only_after_auth"
-    "--skip"
-    "api::media::tests::media_read_rejects_upload_verb_wrong_server_and_wrong_x"
-    "--skip"
-    "api::media::tests::media_read_with_valid_server_scoped_token_reaches_sidecar_gate"
-    "--skip"
-    "api::media::tests::media_reads_reject_unauthenticated_get_and_head_before_sidecar_gate"
-    "--skip"
-    "api::media::tests::upload_concurrency_limit_is_scoped_by_community"
-    "--skip"
-    "api::media::tests::upload_rate_limiter_is_scoped_by_community"
-
     # This assertion intentionally applies only to debug builds; the packaged
     # and tested server binaries use Cargo's release profile.
     "--skip"
@@ -73,7 +57,15 @@ rustPlatform.buildRustPackage {
   nativeCheckInputs = [
     git
     openssl
+    postgresql
+    postgresqlTestHook
   ];
+
+  postgresqlTestSetupPost = ''
+    socket_host="''${PGHOST//\//%2F}"
+    export DATABASE_URL="postgresql://$PGUSER@$socket_host/$PGDATABASE"
+    ./target/${stdenv.targetPlatform.rust.rustcTarget}/release/buzz-admin migrate
+  '';
 
   buildInputs = [openssl];
 
