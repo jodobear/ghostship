@@ -5,9 +5,26 @@
 
 # Production secrets and private host inventory never belong in this repository.
 .private/
+.secrets/
+secrets/
 .sops.yaml
 age-pubkey.txt
-secrets*.yaml
+secrets.*
+secrets-*
+*.enc.*
+*.enc
+*.encrypted.*
+*.encrypted
+*.age
+*.sops
+*.gpg
+*.pgp
+*.asc
+*.kdbx
+*.p12
+*.pfx
+*.jks
+*.jceks
 hardware-configuration.nix
 
 # Nix and VM build outputs.
@@ -17,4 +34,5 @@ result-*
 *.raw
 
 # Local security reports.
+.gitleaksignore
 gitleaks-report.*

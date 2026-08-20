@@ -1,0 +1,92 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  policy-integrity:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out trusted base history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Reject scanner policy changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          git fetch --no-tags --depth=1 origin "pull/${PR_NUMBER}/head"
+          test "$(git rev-parse FETCH_HEAD)" = "$HEAD_SHA"
+
+          failed=0
+          while IFS= read -r -d '' path; do
+            case "$path" in
+              .github/workflows/security.yml|.gitleaks.toml|scripts/check-secrets.sh|scripts/check-tracked-policy.sh)
+                echo "security policy path cannot change in a normal pull request: $path" >&2
+                failed=1
+                ;;
+            esac
+          done < <(git diff --no-renames --name-only -z "$BASE_SHA" "$HEAD_SHA")
+          exit "$failed"
+
+  gitleaks:
+    if: github.event_name != 'pull_request_target'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out complete history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Select trusted scanner policy
+        id: policy
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]] && \
+             git cat-file -e "${BEFORE_SHA}:.gitleaks.toml" 2>/dev/null && \
+             git cat-file -e "${BEFORE_SHA}:scripts/check-tracked-policy.sh" 2>/dev/null; then
+            policy_dir=".git/ghostship-trusted-policy"
+            mkdir -p "$policy_dir"
+            git show "${BEFORE_SHA}:.gitleaks.toml" > "$policy_dir/gitleaks.toml"
+            git show "${BEFORE_SHA}:scripts/check-tracked-policy.sh" > "$policy_dir/check-tracked-policy.sh"
+            chmod +x "$policy_dir/check-tracked-policy.sh"
+
+            failed=0
+            while IFS= read -r -d '' path; do
+              case "$path" in
+                .github/workflows/security.yml|.gitleaks.toml|scripts/check-secrets.sh|scripts/check-tracked-policy.sh)
+                  echo "security policy changed directly on main: $path" >&2
+                  failed=1
+                  ;;
+              esac
+            done < <(git diff --no-renames --name-only -z "$BEFORE_SHA" HEAD)
+            (( failed == 0 )) || exit 1
+
+            "$policy_dir/check-tracked-policy.sh"
+            echo "gitleaks_config=$policy_dir/gitleaks.toml" >> "$GITHUB_OUTPUT"
+          else
+            scripts/check-tracked-policy.sh
+            echo "gitleaks_config=.gitleaks.toml" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Scan secrets
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: ${{ steps.policy.outputs.gitleaks_config }}
