@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "buzz-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787239899,
+        "narHash": "sha256-JCz6Tbld/gGNzuYSrXeAXwubBwTKCdkjacHSBPrQsNg=",
+        "owner": "block",
+        "repo": "buzz",
+        "rev": "e5d1dfef7bf24ad527c9c8c1785b613abad574f7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "block",
+        "repo": "buzz",
+        "rev": "e5d1dfef7bf24ad527c9c8c1785b613abad574f7",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1787101114,
@@ -18,6 +35,7 @@
     },
     "root": {
       "inputs": {
+        "buzz-src": "buzz-src",
         "nixpkgs": "nixpkgs"
       }
     }

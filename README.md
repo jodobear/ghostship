@@ -35,6 +35,16 @@ nix build .#checks.x86_64-linux.vm-boot --no-link
 The boot check uses 2 vCPU, 8 GiB RAM, and a sparse 100 GiB disk, waits for
 `multi-user.target`, and verifies the guest resource ceiling.
 
+The current official Buzz relay source is packaged separately from service
+configuration. Build only its production server binaries with:
+
+```bash
+nix build .#buzz-relay --no-link
+```
+
+See [Buzz source and packaging provenance](docs/provenance/buzz.md). Building
+the package does not claim FIPS or production-service compatibility.
+
 ## Repository safety
 
 Install Gitleaks, then run `scripts/check-secrets.sh` before every commit. The
