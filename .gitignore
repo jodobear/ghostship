@@ -1,0 +1,20 @@
+# Local credentials and deployment connection details.
+.env
+.env.*
+!.env.example
+
+# Production secrets and private host inventory never belong in this repository.
+.private/
+.sops.yaml
+age-pubkey.txt
+secrets*.yaml
+hardware-configuration.nix
+
+# Nix and VM build outputs.
+result
+result-*
+*.qcow2
+*.raw
+
+# Local security reports.
+gitleaks-report.*
